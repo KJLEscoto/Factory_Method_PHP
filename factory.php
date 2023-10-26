@@ -11,174 +11,93 @@
 <body>
 
   <?php
-  
-// Define an interface for the factory
-interface IUserFactory {
-    public function displayUser();
-}
+    include("index.php");
 
-// Implement concrete factories
-class UserSupplier implements IUserFactory {
-    public function displayUser() {
-        return new Supplier();
-    }
-}
-
-class UserCustomer implements IUserFactory {
-    public function displayUser() {
-        return new Customer();
-    }
-}
-
-// Define product classes
-class Supplier {
-    private $data;
-
-    public function setData($data) {
-        $this->data = $data;
+    interface IUserFactory {
+        public function fetchData();
+        public function displayHeader();
+        public function displayUser();
     }
 
-    public function fetchDataFromSupplier() {
-        require('config/supplier-data.php');
-        $this->data = $result->fetch_all(MYSQLI_ASSOC);
-    }
-
-    public function display() {
-        if ($this->data === null) {
-            $this->fetchDataFromSupplier();
+    class UserSupplier implements IUserFactory {
+        public function fetchData() {
+            require('config/supplier-data.php');
+            return $result->fetch_all(MYSQLI_ASSOC);
         }
 
-        $id = 1;
-        ?>
-
-  <header>
-    <h4>
-      <a href="index.php">
-        < Back </a>
-    </h4>
-    <h1>List of Suppliers</h1>
-  </header>
-
-  <hr>
-
-  <table>
-    <thead>
-      <th>#</th>
-      <th>Company Name</th>
-      <th>Contact Name</th>
-      <th>Phone No.</th>
-      <th>Company Address</th>
-    </thead>
-    <tbody>
-
-      <?php
-        foreach ($this->data as $row) {
-            $companyName = $row['company_name'];
-            $contactName = $row['contact_fname'] . ' ' . $row['contact_lname'];
-            $phoneNumber = $row['phone_number'];
-            $companyAddress = $row['company_address'];
-    ?>
-
-      <tr>
-        <td> <?php echo $id ?> </td>
-        <td> <?php echo $companyName ?> </td>
-        <td> <?php echo $contactName ?> </td>
-        <td> <?php echo $phoneNumber ?> </td>
-        <td> <?php echo $companyAddress ?> </td>
-      </tr>
-
-      <?php $id++; ?>
-      <?php } ?>
-
-    </tbody>
-  </table>
-  <?php 
-    }
-}
-
-class Customer {
-    private $data;
-
-    public function setData($data) {
-        $this->data = $data;
+        public function displayHeader() {
+            return ['Company Name', 'Contact Name', 'Phone No.', 'Company Address'];
+        }
+        public function displayUser() {
+            return ['company_name', 'contact_name', 'phone_number', 'company_address'];
+        }
     }
 
-    public function fetchDataFromCustomer() {
-        require('config/customer-data.php');
-        $this->data = $result->fetch_all(MYSQLI_ASSOC);
-    }
-
-    public function display() {
-        if ($this->data === null) {
-            $this->fetchDataFromCustomer();
+    class UserCustomer implements IUserFactory {
+        public function fetchData() {
+            require('config/customer-data.php');
+            return $result->fetch_all(MYSQLI_ASSOC);
         }
 
+        public function displayHeader() {
+            return ['Customer Name', 'Phone No.', 'Customer Address'];
+        }
+
+        public function displayUser() {
+            return ['customer_name', 'phone_number', 'customer_address'];
+        }
+    }
+
+    if (isset($_POST['userType'])) {
+        $userType = $_POST['userType'];
+        $userFactory = null;
+
+        if ($userType === 'Supplier') {
+            $userFactory = new UserSupplier();
+            $title = 'List of Suppliers';
+        } elseif ($userType === 'Customer') {
+            $userFactory = new UserCustomer();
+            $title = 'List of Customers';
+        } elseif ($userType === 'Clear') {
+            header("Location: index.php");
+            exit();
+        }
+
+        $data = $userFactory->fetchData();
+        $tableHeader = $userFactory->displayHeader();
+        $tableData = $userFactory->displayUser();
+        
+        echo '<header>';
+        //echo '<h4><a href="index.php">< Back</a></h4>';
+        echo '<h1>' . $title . '</h1>';
+        echo '</header>';
+        echo '<hr>';
+
+        echo '<table>';
+        echo '<thead>';
+        echo '<th>#</th>';
+        foreach ($tableHeader as $header) {
+            echo '<th>' . $header . '</th>';
+        }
+        echo '</thead>';
+        echo '<tbody>';
+        
         $id = 1;
-        ?>
+        foreach ($data as $row) {
+            echo '<tr>';
+            echo '<td>' . $id . '</td>';
+            foreach ($tableData as $key) {
+                echo '<td>' . $row[$key] . '</td>';
+            }
+            echo '</tr>';
+            $id++;
+        }
 
-  <header>
-    <h4>
-      <a href="index.php">
-        < Back </a>
-    </h4>
-    <h1>List of Customers</h1>
-  </header>
-
-  <hr>
-
-  <table>
-    <thead>
-      <th>#</th>
-      <th>Customer Name</th>
-      <th>Phone No.</th>
-      <th>Customer Address</th>
-    </thead>
-    <tbody>
-
-      <?php
-        foreach ($this->data as $row) {
-            $customerName = $row['customer_fname'] . ' ' . $row['customer_lname'];
-            $phoneNumber = $row['phone_number'];
-            $customerAddress = $row['customer_address'];
-    ?>
-
-      <tr>
-        <td> <?php echo $id ?> </td>
-        <td> <?php echo $customerName ?> </td>
-        <td> <?php echo $phoneNumber ?> </td>
-        <td> <?php echo $customerAddress ?> </td>
-      </tr>
-
-      <?php $id++; ?>
-      <?php } ?>
-
-    </tbody>
-  </table>
-  <?php 
+        echo '</tbody>';
+        echo '</table>';
     }
-}
+  ?>
 
-// class Customer {
-//     public function display() {
-//         include "table/customer-table.php";
-//     }
-// }
-
-// to display
-if (isset($_POST['userType'])) {
-    $userType = $_POST['userType'];
-
-    if ($userType === 'Supplier') {
-        $userFactory = new UserSupplier();
-    } else if ($userType === 'Customer') {
-        $userFactory = new UserCustomer();
-    }
-
-    $display_table = $userFactory->displayUser();
-    $display_table->display();
-}
-
-?>
 </body>
 
 </html>
